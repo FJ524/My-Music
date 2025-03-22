@@ -6,6 +6,8 @@ import connectDB from './config/db.js';
 import cookieParser from 'cookie-parser';
 import { notFound, errorHandler } from './middleware/errorMiddleware.js';
 import userRoutes from './routes/userRoutes.js';
+import categoryRoutes from "./routes/categoryRoutes.js";
+import musicRoutes from "./routes/musicRoutes.js";
 import multer from 'multer';
 import cors from 'cors';
 import File from './models/File.js';
@@ -28,6 +30,8 @@ app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
 app.use('/api/users', userRoutes);
+app.use("/api/categories", categoryRoutes);
+app.use("/api/music", musicRoutes);
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
     return cb(null, './uploads')

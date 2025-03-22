@@ -2,6 +2,8 @@ import asyncHandler from 'express-async-handler';
 import User from '../models/userModel.js';
 import generateToken from '../utils/generateToken.js';
 import bcrypt from 'bcryptjs';
+import nodemailer from 'nodemailer';
+import jwt from 'jsonwebtoken';
 
 
 // @desc    Auth user & get token
@@ -117,6 +119,78 @@ const getUserProfile = asyncHandler(async (req, res) => {
   }
 });
 
+// @desc    Forgot password
+// @route   PUT /api/users/forgot-password
+// @access  Private
+const forgotUserPassword = asyncHandler(async (req, res) => {
+  try {
+        const { email } = req.body;
+        const user = await User.findOne({ email });
+        if (!user) return res.status(404).json({ message: "User not found" });
+
+        // Generate Reset Token
+        const resetToken = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
+          expiresIn: '1h',
+        });
+
+        // Send Reset Email
+        const resetUrl = `http://localhost:3000/reset-password/${resetToken}`;
+        const transporter = nodemailer.createTransport({
+          service: 'gmail',
+          auth: {
+            user: process.env.EMAIL_USER, 
+            pass: process.env.EMAIL_PASS  
+          }
+        });
+        try {         
+          const mailOptions = {
+              from: "support@gmail.com",
+              to: user.email,
+              subject: 'Password Reset Request',
+              text: `Click here to reset your password: ${resetUrl}`
+          };
+                    
+      } catch (error) {
+          console.error("Error in Mail Options:", error);
+      }
+        try {
+          await transporter.sendMail(mailOptions);
+          res.json({ message: 'Password reset email sent successfully.' });
+        } catch (error) {
+          res.status(500).json({ message: 'Email could not be sent' });
+        }
+
+    } catch (error) {
+        res.status(500).json({ message: "Internal Server Error" });
+    }   
+});
+
+// @desc    Update user Password
+// @route   PUT /api/users/profile
+// @access  Private
+ const resetPassword = asyncHandler(async (req, res) => {
+  const { token } = req.params;
+  const { password } = req.body;
+
+  try {
+    // Verify the JWT token
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+
+    const user = await User.findById(decoded.id);
+    if (!user) {
+      return res.status(400).json({ message: 'Invalid token or user does not exist' });
+    }
+
+    // Update password
+    user.password = password;
+    await user.save();
+
+    res.json({ message: 'Password reset successful' });
+  } catch (error) {
+    res.status(400).json({ message: 'Invalid or expired token' });
+  }
+});
+
 // @desc    Update user profile
 // @route   PUT /api/users/profile
 // @access  Private
@@ -156,4 +230,6 @@ export {
   logoutUser,
   getUserProfile,
   updateUserProfile,
+  forgotUserPassword,
+  resetPassword,
 };
